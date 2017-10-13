@@ -5,8 +5,26 @@
 
 import * as vscode from 'vscode';
 import { QuickPickItem } from 'vscode';
+import * as nls from 'vscode-nls';
 import * as errors from '../errors';
-import { localize } from '../localize';
+import * as crypto from "crypto";
+
+// asdf
+export interface PartialList<T> extends Array<T> {
+    nextLink?: string;
+}
+
+export async function listAll<T>(client: { listNext(nextPageLink: string): Promise<PartialList<T>>; }, first: Promise<PartialList<T>>): Promise<T[]> {
+    const all: T[] = [];
+
+    for (let list = await first; list.length || list.nextLink; list = list.nextLink ? await client.listNext(list.nextLink) : []) {
+        all.push(...list);
+    }
+
+    return all;
+}
+
+export const localize: nls.LocalizeFunc = nls.config(process.env.VSCODE_NLS_CONFIG)();
 
 export async function showQuickPick<T>(items: PickWithData<T>[] | Thenable<PickWithData<T>[]>, placeHolder: string, ignoreFocusOut?: boolean): Promise<PickWithData<T>>;
 export async function showQuickPick(items: Pick[] | Thenable<Pick[]>, placeHolder: string, ignoreFocusOut?: boolean): Promise<Pick>;
@@ -74,3 +92,43 @@ export class PickWithData<T> extends Pick {
         this.data = data;
     }
 }
+
+// asdf
+// export async function writeToFile(path: string, data: string): Promise<void> {
+//     await new Promise((resolve: () => void, reject: (e: Error) => void): void => {
+//         fs.writeFile(path, data, (error?: Error) => {
+//             if (error) {
+//                 reject(error);
+//             } else {
+//                 resolve();
+//             }
+//         });
+//     });
+// }
+
+// asdf
+export function getSignInCommandString(): string {
+    return 'azure-account.login';
+}
+
+// asdf
+// export function errToString(error: any): string {
+//     if (error === null || error === undefined) {
+//         return '';
+//     }
+
+//     if (error instanceof Error) {
+//         return JSON.stringify({
+//             'Error': error.constructor.name,
+//             'Message': error.message
+//         });
+//     }
+
+//     if (typeof (error) === 'object') {
+//         return JSON.stringify({
+//             'object': error.constructor.name
+//         });
+//     }
+
+//     return error.toString();
+// }

@@ -196,11 +196,12 @@
         "tslint": "^5.7.0",
         "tslint-microsoft-contrib": "5.0.1",
         "typescript": "^2.0.3",
-        "vscode": "^1.0.0"
+        "vscode": "^1.16.0"
     },
     "dependencies": {
         "archiver": "^2.0.3",
         "azure-arm-resource": "^2.0.0-preview",
+        "azure-arm-storage": "^3.1.0",
         "azure-arm-website": "^1.0.0-preview",
         "ms-rest": "^2.2.2",
         "ms-rest-azure": "^2.3.1",

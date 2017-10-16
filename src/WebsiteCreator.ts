@@ -74,18 +74,18 @@ export abstract class WebsiteCreator extends WizardBase {
     protected abstract onExecuteError(error: Error);
 }
 
-class WebAppCreatorStepBase extends WizardStep {
+export class WebsiteCreatorStepBase extends WizardStep {
     protected constructor(wizard: WizardBase, stepTitle: string, readonly azureAccount: AzureAccountWrapper, persistence: vscode.Memento) {
         super(wizard, stepTitle, persistence);
     }
 
-    protected getSuggestedRGAndPlanName(): string {
-        var suggestedRGAndPlanName = this.wizard.findStepOfType(WebsiteNameStep).suggestedRGAndPlanName;
-        if (!suggestedRGAndPlanName) {
+    protected getsuggestedRelatedName(): string {
+        var suggestedRelatedName = this.wizard.findStepOfType(WebsiteNameStep).suggestedRelatedName;
+        if (!suggestedRelatedName) {
             throw new Error('A website name must be entered first.');
         }
 
-        return suggestedRGAndPlanName;
+        return suggestedRelatedName;
     }
 
     protected getSelectedSubscription(): SubscriptionModels.Subscription {
@@ -149,7 +149,7 @@ export class SubscriptionStep extends SubscriptionStepBase {
     }
 }
 
-export class ResourceGroupStep extends WebAppCreatorStepBase {
+export class ResourceGroupStep extends WebsiteCreatorStepBase {
     private _createNew: boolean;
     private _rg: ResourceModels.ResourceGroup;
 
@@ -172,7 +172,7 @@ export class ResourceGroupStep extends WebAppCreatorStepBase {
         var locationsTask = this.azureAccount.getLocationsBySubscription(this.getSelectedSubscription());
         var locations: SubscriptionModels.Location[];
         var newRgName: string;
-        var suggestedName = this.getSuggestedRGAndPlanName();
+        var suggestedName = this.getsuggestedRelatedName();
 
         const quickPickItemsTask = Promise.all([resourceGroupsTask, locationsTask]).then(results => {
             const quickPickItems: QuickPickItemWithData<ResourceModels.ResourceGroup>[] = [createNewItem];
@@ -260,7 +260,7 @@ export class ResourceGroupStep extends WebAppCreatorStepBase {
     }
 }
 
-export class AppServicePlanStep extends WebAppCreatorStepBase {
+export class AppServicePlanStep extends WebsiteCreatorStepBase {
     private _createNew: boolean;
     private _plan: WebSiteModels.AppServicePlan;
 
@@ -305,7 +305,7 @@ export class AppServicePlanStep extends WebAppCreatorStepBase {
         });
 
         const rg = this.getSelectedResourceGroup();
-        const suggestedName = this.getSuggestedRGAndPlanName();
+        const suggestedName = this.getsuggestedRelatedName();
         var newPlanName: string;
 
         // Cache hosting plan separately per subscription
@@ -438,7 +438,7 @@ interface WebsiteStepResources {
     created: string;  // like
 }
 
-export class WebsiteStep extends WebAppCreatorStepBase {
+export class WebsiteStep extends WebsiteCreatorStepBase {
     private _website: WebSiteModels.Site;
 
     constructor(wizard: WizardBase, azureAccount: AzureAccountWrapper, private _appKind: AppKind, private _websiteOS: WebsiteOS, private _resources: WebsiteStepResources, persistence?: vscode.Memento) {
@@ -543,9 +543,9 @@ export class WebsiteStep extends WebAppCreatorStepBase {
     }
 }
 
-export class WebsiteNameStep extends WebAppCreatorStepBase {
+export class WebsiteNameStep extends WebsiteCreatorStepBase {
     private _websiteName: string;
-    private _suggestedRGAndPlanName: string;
+    private _suggestedRelatedName: string;
 
     constructor(wizard: WizardBase, azureAccount: AzureAccountWrapper, private _resources: { prompt: string }, persistence?: vscode.Memento) {
         super(wizard, 'Get Website name', azureAccount, persistence);
@@ -582,10 +582,14 @@ export class WebsiteNameStep extends WebAppCreatorStepBase {
         }
 
         this._websiteName = siteName;
-        this._suggestedRGAndPlanName = await this.suggestRGAndPlanPName(siteName);
+        this._suggestedRelatedName = await this.suggestRelatedName(siteName);
     }
 
-    private async suggestRGAndPlanPName(siteName: string): Promise<string> {
+    /**
+     * Get a suggested base name for resources related to a given site name
+     * @param siteName Site name
+     */
+    private async suggestRelatedName(siteName: string): Promise<string> {
         const subscription = this.getSelectedSubscription();
         const resourceClient = new ResourceManagementClient(this.azureAccount.getCredentialByTenantId(subscription.tenantId), subscription.subscriptionId);
         const webSiteClient = new WebSiteManagementClient(this.azureAccount.getCredentialByTenantId(subscription.tenantId), subscription.subscriptionId);
@@ -607,6 +611,7 @@ export class WebsiteNameStep extends WebAppCreatorStepBase {
             if (plans.findIndex(hp => hp.name.toLowerCase() === name.toLowerCase()) >= 0) {
                 return true;
             }
+            // asdf storage account names
 
             return false;
         };
@@ -617,8 +622,8 @@ export class WebsiteNameStep extends WebAppCreatorStepBase {
 
         var i = 2;
         while (true) {
-            // Website names are limited to 60 characters, resource group names to 90
-            const maxNameLength = 60;
+            // Website names are limited to 60 characters, resource group names to 90, storage accounts to 24
+            const maxNameLength = 24;
 
             var suffix = `-${i}`;
             var suffixedName = siteName.slice(0, maxNameLength - suffix.length) + suffix;
@@ -637,8 +642,8 @@ export class WebsiteNameStep extends WebAppCreatorStepBase {
         return this._websiteName;
     }
 
-    get suggestedRGAndPlanName(): string {
-        return this._suggestedRGAndPlanName;
+    get suggestedRelatedName(): string {
+        return this._suggestedRelatedName;
     }
 }
 

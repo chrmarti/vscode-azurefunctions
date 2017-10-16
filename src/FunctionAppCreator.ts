@@ -6,46 +6,46 @@
 import * as vscode from 'vscode';
 import { AzureAccountWrapper } from './azureAccountWrapper';
 import { AppServicePlanStep, AppKind, ResourceGroupStep, SubscriptionStep, WebsiteCreator, WebsiteOS, WebsiteNameStep, WebsiteStep } from "./WebsiteCreator";
-import { WizardBase } from './wizard';
 import { SubscriptionModels, ResourceManagementClient, ResourceModels } from 'azure-arm-resource';
 import { UserCancelledError } from './errors';
 import WebSiteManagementClient = require('azure-arm-website');
 import { WizardStep } from "./wizard";
 import * as WebSiteModels from '../node_modules/azure-arm-website/lib/models';
+import { localize } from './util';
 import * as util from './util';
 
-export class WebAppCreator extends WebsiteCreator {
+export class FunctionAppCreator extends WebsiteCreator {
     constructor(output: vscode.OutputChannel, readonly azureAccount: AzureAccountWrapper, subscription: SubscriptionModels.Subscription, persistence?: vscode.Memento) {
         super(output, azureAccount, subscription, persistence);
     }
 
-    protected appKind: AppKind = "app";
-    protected websiteOS: WebsiteOS = "linux";
+    protected appKind: AppKind = "functionapp";
+    protected websiteOS: WebsiteOS = "windows";
 
     protected prepareSteps(): void {
         this.steps.push(new SubscriptionStep(this, this.azureAccount,
             {
-                prompt: "Select the subscription to create the new Web App in."
+                prompt: "Select the subscription to create the new Function App in."
             },
             this.subscription, this.persistence));
         this.steps.push(new WebsiteNameStep(this, this.azureAccount,
             {
-                prompt: "Enter a globally unique name for the new Web App."
+                prompt: "Enter a globally unique name for the new Function App."
             },
             this.persistence));
         this.steps.push(new ResourceGroupStep(this, this.azureAccount, this.persistence));
-        this.steps.push(new AppServicePlanStep(this, this.azureAccount, this.appKind, this.websiteOS, this.persistence));
-        this.steps.push(new WebsiteStep(this, this.azureAccount, this.appKind, this.websiteOS, {
-            title: "Create Web App",
-            creating: "Creating new Web App:",
-            created: "Created new Web App:"
-        },
-            this.persistence));
+        // asdf this.steps.push(new AppServicePlanStep(this, this.azureAccount, this.appKind, this.websiteOS, this.persistence));
+        this.steps.push(new WebsiteStep(this, this.azureAccount, this.appKind, this.websiteOS,
+            {
+                title: "Create Function App",
+                creating: "Creating new Function App:",
+                created: "Created new Function App:"
+            }, this.persistence));
     }
 
     protected beforeExecute(_step: WizardStep, stepIndex: number) {
         if (stepIndex == 0) {
-            this.writeline('Creating new Web App...');
+            this.writeline(localize('azFunc.CreatingFuncApp', 'Creating new Function App in Azure...'));
         }
     }
 
@@ -53,7 +53,7 @@ export class WebAppCreator extends WebsiteCreator {
         if (error instanceof UserCancelledError) {
             return;
         }
-        this.writeline(`Failed to create new Web App: ${error.message}`);
+        this.writeline(localize("azFunc.FailedCreatingFuncApp", "Failed to create new Function App in Azure: {0}", error.message));
         this.writeline('');
     }
 }

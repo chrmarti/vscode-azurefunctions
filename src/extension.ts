@@ -9,8 +9,10 @@ import * as vscode from 'vscode';
 import TelemetryReporter from 'vscode-extension-telemetry';
 import { AzureAccount } from './azure-account.api';
 import { AzureFunctionsExplorer } from './AzureFunctionsExplorer';
+import { AzureAccountWrapper } from "./AzureAccountWrapper";
 import { createFunction } from './commands/createFunction';
 import { createFunctionApp } from './commands/createFunctionApp';
+import { createRemoteFunctionApp } from './commands/createRemoteFunctionApp';
 import { openInPortal } from './commands/openInPortal';
 import { restartFunctionApp } from './commands/restartFunctionApp';
 import { startFunctionApp } from './commands/startFunctionApp';
@@ -18,6 +20,7 @@ import { stopFunctionApp } from './commands/stopFunctionApp';
 import { ErrorData } from './ErrorData';
 import * as errors from './errors';
 import { FunctionAppNode } from './nodes/FunctionAppNode';
+import { SubscriptionNode } from "./nodes/SubscriptionNode";
 import { NodeBase } from './nodes/NodeBase';
 import { localize } from './util';
 
@@ -50,6 +53,7 @@ export function activate(context: vscode.ExtensionContext): void {
         initCommand(context, 'azureFunctions.openInPortal', openInPortal);
         initAsyncCommand(context, 'azureFunctions.createFunction', async () => await createFunction(outputChannel));
         initAsyncCommand(context, 'azureFunctions.createFunctionApp', async () => await createFunctionApp(outputChannel));
+        initAsyncCommand(context, 'azureFunctions.createRemoteFunctionApp', async (node?: SubscriptionNode) => await createRemoteFunctionApp(context, outputChannel, new AzureAccountWrapper(context), explorer, node));
         initAsyncCommand(context, 'azureFunctions.startFunctionApp', async (node?: FunctionAppNode) => await startFunctionApp(explorer, node));
         initAsyncCommand(context, 'azureFunctions.stopFunctionApp', async (node?: FunctionAppNode) => await stopFunctionApp(explorer, node));
         initAsyncCommand(context, 'azureFunctions.restartFunctionApp', async (node?: FunctionAppNode) => await restartFunctionApp(explorer, node));

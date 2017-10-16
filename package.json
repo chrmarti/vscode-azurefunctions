@@ -27,6 +27,7 @@
         "onCommand:azureFunctions.refresh",
         "onCommand:azureFunctions.createFunctionApp",
         "onCommand:azureFunctions.createFunction",
+        "onCommand:azureFunctions.createRemoteFunctionApp",
         "onCommand:azureFunctions.openInPortal",
         "onCommand:azureFunctions.startFunctionApp",
         "onCommand:azureFunctions.stopFunctionApp",
@@ -43,6 +44,15 @@
                 "icon": {
                     "light": "resources/light/Refresh.svg",
                     "dark": "resources/dark/Refresh.svg"
+                }
+            },
+            {
+                "command": "azureFunctions.createRemoteFunctionApp",
+                "title": "%azFunc.createRemoteFunctionApp%",
+                "category": "Azure Functions",
+                "icon": {
+                    "light": "resources/light/CreateFunctionApp.svg",
+                    "dark": "resources/dark/CreateFunctionApp.svg"
                 }
             },
             {
@@ -95,6 +105,11 @@
         },
         "menus": {
             "view/title": [
+                {
+                    "command": "azureFunctions.createRemoteFunctionApp",
+                    "when": "view == azureFunctionsExplorer",
+                    "group": "navigation@1"
+                },
                 {
                     "command": "azureFunctions.createFunctionApp",
                     "when": "view == azureFunctionsExplorer",

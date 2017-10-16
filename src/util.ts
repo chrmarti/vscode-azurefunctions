@@ -12,6 +12,21 @@ import { QuickPickItem } from 'vscode';
 import * as nls from 'vscode-nls';
 import * as errors from './errors';
 
+// asdf
+export interface PartialList<T> extends Array<T> {
+    nextLink?: string;
+}
+
+export async function listAll<T>(client: { listNext(nextPageLink: string): Promise<PartialList<T>>; }, first: Promise<PartialList<T>>): Promise<T[]> {
+    const all: T[] = [];
+
+    for (let list = await first; list.length || list.nextLink; list = list.nextLink ? await client.listNext(list.nextLink) : []) {
+        all.push(...list);
+    }
+
+    return all;
+}
+
 export const localize: nls.LocalizeFunc = nls.config(process.env.VSCODE_NLS_CONFIG)();
 
 export async function showQuickPick<T>(items: PickWithData<T>[] | Thenable<PickWithData<T>[]>, placeHolder: string, ignoreFocusOut?: boolean): Promise<PickWithData<T>>;
@@ -109,4 +124,8 @@ export async function writeToFile(path: string, data: string): Promise<void> {
             }
         });
     });
+}
+
+export function getSignInCommandString(): string {
+    return 'azure-account.login';
 }

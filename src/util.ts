@@ -136,3 +136,24 @@ export function getRandomHexString(length: number): string {
     var s = buffer.toString("hex").slice(0, length);
     return s;
 }
+
+export function errToString(error: any): string {
+    if (error === null || error === undefined) {
+        return '';
+    }
+
+    if (error instanceof Error) {
+        return JSON.stringify({
+            'Error': error.constructor.name,
+            'Message': error.message
+        });
+    }
+
+    if (typeof (error) === 'object') {
+        return JSON.stringify({
+            'object': error.constructor.name
+        });
+    }
+
+    return error.toString();
+}

@@ -79,14 +79,9 @@ export class StorageAccountStep extends WebsiteCreatorStepBase {
         var storageTask = storageClient.storageAccounts.list();
         var storageAccounts: StorageAccount[];
 
-        // Storage accounts don't allow hyphens in their names
-        // asdf also they can't have uppercase.  This should be resolved at the beginning and checked for existence
-        var suggestedName = (await this.suggestRelatedName()).replace("-", "");
-
         const quickPickItemsTask = storageTask.then(storageAccounts => {
             const quickPickItems: QuickPickItemWithData<StorageAccount>[] = [createNewItem];
 
-            // asdf must support blobs, queues, tables
             storageAccounts.forEach(sa => {
                 quickPickItems.push({
                     persistenceId: sa.id,
@@ -118,6 +113,7 @@ export class StorageAccountStep extends WebsiteCreatorStepBase {
 
         this._createNew = true;
 
+        var suggestedName = await this.suggestRelatedName();
         var newAccountName: string;
         var nameValid = false;
         while (!nameValid) {
@@ -181,7 +177,6 @@ export class StorageAccountStep extends WebsiteCreatorStepBase {
     }
 }
 
-// asdf verify creating new storage outside of RG that the website is in
 export class FunctionAppWebsiteStep extends WebsiteStep {
     public async getSiteConfig(linuxFxVersion: string): Promise<WebSiteModels.SiteConfig> {
         const maxFileShareNameLength = 63;

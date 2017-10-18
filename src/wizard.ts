@@ -7,6 +7,7 @@ import * as vscode from 'vscode';
 import * as util from './util';
 import { AzureAccountWrapper } from './azureAccountWrapper';
 import { SubscriptionModels } from 'azure-arm-resource';
+import TelemetryReporter from 'vscode-extension-telemetry';
 import { UserCancelledError } from './errors';
 
 export type WizardStatus = 'PromptCompleted' | 'Completed' | 'Faulted' | 'Cancelled';
@@ -15,7 +16,7 @@ export abstract class WizardBase {
     private readonly _steps: WizardStep[] = [];
     private _result: WizardResult;
 
-    protected constructor(protected readonly output: vscode.OutputChannel) { }
+    protected constructor(protected readonly output: vscode.OutputChannel, private _telemetryReporter?: TelemetryReporter) { }
 
     protected abstract prepareSteps();
 
@@ -135,13 +136,15 @@ export abstract class WizardBase {
     protected abstract onExecuteError(error: Error, step?: WizardStep, stepIndex?: number)
 
     protected sendErrorTelemetry(step: WizardStep, error: any) {
-        const eventName = `${this.constructor.name}Error`
-        // asdf
-        // util.sendTelemetry(eventName,
-        //     {
-        //         step: step ? step.stepTitle : 'Unknown',
-        //         error: util.errToString(error)
-        //     });
+        const eventName = `${this.constructor.name}Error`;
+
+        if (this._telemetryReporter) {
+            this._telemetryReporter.sendTelemetryEvent(eventName,
+                {
+                    step: step ? step.stepTitle : 'Unknown',
+                    error: util.errToString(error)
+                });
+        }
     }
 }
 

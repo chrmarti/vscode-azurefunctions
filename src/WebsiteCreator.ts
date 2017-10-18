@@ -21,8 +21,8 @@ function GetWebsiteKind(kind: AppKind, os: WebsiteOS) {
     var planKind: string;
 
     if (os === "linux") {
-        // "linux" or "functionapp,linux"
-        planKind = kind === "app" ? "linux" : "functionapp,linux"; // asdf
+        // Linux does not appear to be supported for function apps at the moment
+        return "linux";
     } else {
         // "app" or "functionapp"
         planKind = kind;
@@ -470,7 +470,6 @@ export class WebsiteStep extends WebsiteCreatorStepBase {
         });
 
         if (this._websiteOS === "linux") {
-            // asdf remove step count
             const pickedItem = await this.showQuickPick(runtimeItems, { placeHolder: 'Select Linux runtime stack.' }, "NewWebApp.RuntimeStack");
             runtimeStack = pickedItem.data.name;
         } else {

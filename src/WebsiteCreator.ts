@@ -7,6 +7,8 @@ import * as vscode from 'vscode';
 import { AzureAccountWrapper } from './azureAccountWrapper';
 import { WizardBase, WizardResult, WizardStep, SubscriptionStepBase, QuickPickItemWithData } from './wizard';
 import { SubscriptionModels, ResourceManagementClient, ResourceModels } from 'azure-arm-resource';
+import StorageManagementClient = require('azure-arm-storage');
+import StorageAccount from 'azure-arm-storage/lib/models/storageAccount';
 import { UserCancelledError } from './errors';
 import WebSiteManagementClient = require('azure-arm-website');
 import * as WebSiteModels from '../node_modules/azure-arm-website/lib/models';
@@ -79,13 +81,13 @@ export class WebsiteCreatorStepBase extends WizardStep {
         super(wizard, stepTitle, persistence);
     }
 
-    protected getsuggestedRelatedName(): string {
-        var suggestedRelatedName = this.wizard.findStepOfType(WebsiteNameStep).suggestedRelatedName;
-        if (!suggestedRelatedName) {
+    protected suggestRelatedName(): Promise<string> {
+        var promise = this.wizard.findStepOfType(WebsiteNameStep).suggestRelatedName();
+        if (!promise) {
             throw new Error('A website name must be entered first.');
         }
 
-        return suggestedRelatedName;
+        return promise;
     }
 
     protected getSelectedSubscription(): SubscriptionModels.Subscription {
@@ -172,7 +174,6 @@ export class ResourceGroupStep extends WebsiteCreatorStepBase {
         var locationsTask = this.azureAccount.getLocationsBySubscription(this.getSelectedSubscription());
         var locations: SubscriptionModels.Location[];
         var newRgName: string;
-        var suggestedName = this.getsuggestedRelatedName();
 
         const quickPickItemsTask = Promise.all([resourceGroupsTask, locationsTask]).then(results => {
             const quickPickItems: QuickPickItemWithData<ResourceModels.ResourceGroup>[] = [createNewItem];
@@ -201,6 +202,7 @@ export class ResourceGroupStep extends WebsiteCreatorStepBase {
         }
 
         this._createNew = true;
+        var suggestedName = await this.suggestRelatedName();
         newRgName = await this.showInputBox({
             value: suggestedName,
             prompt: 'Enter the name of the new resource group.',
@@ -305,7 +307,6 @@ export class AppServicePlanStep extends WebsiteCreatorStepBase {
         });
 
         const rg = this.getSelectedResourceGroup();
-        const suggestedName = this.getsuggestedRelatedName();
         var newPlanName: string;
 
         // Cache hosting plan separately per subscription
@@ -318,6 +319,7 @@ export class AppServicePlanStep extends WebsiteCreatorStepBase {
         }
 
         // Prompt for new plan information.
+        const suggestedName = await this.suggestRelatedName();
         newPlanName = await this.showInputBox({
             value: suggestedName,
             prompt: 'Enter the name of the new Hosting Plan.',
@@ -559,7 +561,7 @@ export class WebsiteStep extends WebsiteCreatorStepBase {
 
 export class WebsiteNameStep extends WebsiteCreatorStepBase {
     private _websiteName: string;
-    private _suggestedRelatedName: string;
+    private _suggestedRelatedNamePromise: Promise<string>
 
     constructor(wizard: WizardBase, azureAccount: AzureAccountWrapper, private _resources: { prompt: string }, persistence?: vscode.Memento) {
         super(wizard, 'Get Website name', azureAccount, persistence);
@@ -596,17 +598,18 @@ export class WebsiteNameStep extends WebsiteCreatorStepBase {
         }
 
         this._websiteName = siteName;
-        this._suggestedRelatedName = await this.suggestRelatedName(siteName);
+        this._suggestedRelatedNamePromise = this.generateRelatedName(siteName);
     }
 
     /**
      * Get a suggested base name for resources related to a given site name
      * @param siteName Site name
      */
-    private async suggestRelatedName(siteName: string): Promise<string> {
+    private async generateRelatedName(siteName: string): Promise<string> {
         const subscription = this.getSelectedSubscription();
         const resourceClient = new ResourceManagementClient(this.azureAccount.getCredentialByTenantId(subscription.tenantId), subscription.subscriptionId);
         const webSiteClient = new WebSiteManagementClient(this.azureAccount.getCredentialByTenantId(subscription.tenantId), subscription.subscriptionId);
+        const storageClient = new StorageManagementClient(this.azureAccount.getCredentialByTenantId(subscription.tenantId), subscription.subscriptionId);
 
         const resourceGroupsTask = util.listAll(resourceClient.resourceGroups, resourceClient.resourceGroups.list());
         const plansTask = util.listAll(webSiteClient.appServicePlans, webSiteClient.appServicePlans.list());
@@ -618,31 +621,47 @@ export class WebsiteNameStep extends WebsiteCreatorStepBase {
         groups = results[0];
         plans = results[1];
 
-        const nameTaken = (name: string) => {
+        // Website names are limited to 60 characters, resource group names to 90, storage accounts to 24
+        // Storage accounts cannot have uppercase letters or hyphens and at least 3 characters.
+        // So restrict everything to: 3-24 charcters, lowercase and digits only.
+        const minLength = 3;
+        const maxLength = 24;
+
+        var preferredName = siteName.toLowerCase().replace(/[^0-9a-z]/g, "");
+
+        async function nameTaken(name: string): Promise<boolean> {
             if (groups.findIndex(rg => rg.name.toLowerCase() === name.toLowerCase()) >= 0) {
                 return true;
             }
             if (plans.findIndex(hp => hp.name.toLowerCase() === name.toLowerCase()) >= 0) {
                 return true;
             }
-            // asdf storage account names
+
+            if (!(await storageClient.storageAccounts.checkNameAvailability(name)).nameAvailable) {
+                return true;
+            }
 
             return false;
         };
 
-        if (!nameTaken(siteName)) {
-            return siteName;
+        function generateSuffixedName(i: number): string {
+            let suffix = `${i}`;
+            let minUnsuffixedLength = minLength - suffix.length;
+            let maxUnsuffixedLength = maxLength - suffix.length;
+            let unsuffixedName = preferredName.slice(0, maxUnsuffixedLength) + "zzz".slice(0, Math.max(0, minUnsuffixedLength - preferredName.length));
+            return unsuffixedName + suffix;
+        }
+
+        if (!await nameTaken(preferredName)) {
+            return preferredName;
         }
 
         var i = 2;
         while (true) {
-            // Website names are limited to 60 characters, resource group names to 90, storage accounts to 24
-            const maxNameLength = 24;
-
-            var suffix = `-${i}`;
-            var suffixedName = siteName.slice(0, maxNameLength - suffix.length) + suffix;
-            if (!nameTaken(suffixedName)) {
-                return suffixedName;
+            let newName = generateSuffixedName(i);
+            let isTaken = await nameTaken(newName);
+            if (!isTaken) {
+                return newName;
             }
 
             ++i;
@@ -656,8 +675,8 @@ export class WebsiteNameStep extends WebsiteCreatorStepBase {
         return this._websiteName;
     }
 
-    get suggestedRelatedName(): string {
-        return this._suggestedRelatedName;
+    public suggestRelatedName(): Promise<string> {
+        return this._suggestedRelatedNamePromise;
     }
 }
 

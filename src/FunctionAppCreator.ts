@@ -81,7 +81,7 @@ export class StorageAccountStep extends WebsiteCreatorStepBase {
 
         // Storage accounts don't allow hyphens in their names
         // asdf also they can't have uppercase.  This should be resolved at the beginning and checked for existence
-        var suggestedName = this.getsuggestedRelatedName().replace("-", "");
+        var suggestedName = (await this.suggestRelatedName()).replace("-", "");
 
         const quickPickItemsTask = storageTask.then(storageAccounts => {
             const quickPickItems: QuickPickItemWithData<StorageAccount>[] = [createNewItem];

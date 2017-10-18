@@ -11,6 +11,7 @@ import * as vscode from 'vscode';
 import { QuickPickItem } from 'vscode';
 import * as nls from 'vscode-nls';
 import * as errors from './errors';
+import * as crypto from "crypto";
 
 // asdf
 export interface PartialList<T> extends Array<T> {
@@ -128,4 +129,10 @@ export async function writeToFile(path: string, data: string): Promise<void> {
 
 export function getSignInCommandString(): string {
     return 'azure-account.login';
+}
+
+export function getRandomHexString(length: number): string {
+    const buffer = crypto.randomBytes(Math.ceil(length / 2));
+    var s = buffer.toString("hex").slice(0, length);
+    return s;
 }

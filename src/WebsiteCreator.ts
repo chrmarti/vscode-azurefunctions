@@ -445,6 +445,12 @@ export class WebsiteStep extends WebsiteCreatorStepBase {
         super(wizard, _resources.title, azureAccount, persistence);
     }
 
+    public async getSiteConfig(linuxFxVersion: string): Promise<WebSiteModels.SiteConfig> {
+        return Promise.resolve({
+            linuxFxVersion: linuxFxVersion
+        });
+    }
+
     async prompt(): Promise<void> {
         const siteName = this.getWebsiteName();
 
@@ -461,8 +467,13 @@ export class WebsiteStep extends WebsiteCreatorStepBase {
             });
         });
 
-        const pickedItem = await this.showQuickPick(runtimeItems, { placeHolder: 'Select Linux runtime stack.' }, "NewWebApp.RuntimeStack");
-        runtimeStack = pickedItem.data.name;
+        if (this._websiteOS === "linux") {
+            // asdf remove step count
+            const pickedItem = await this.showQuickPick(runtimeItems, { placeHolder: 'Select Linux runtime stack.' }, "NewWebApp.RuntimeStack");
+            runtimeStack = pickedItem.data.name;
+        } else {
+            runtimeStack = undefined;
+        }
 
         const rg = this.getSelectedResourceGroup();
         const planOptional = this.getSelectedAppServicePlanOptional();
@@ -473,8 +484,8 @@ export class WebsiteStep extends WebsiteCreatorStepBase {
             location: rg.location,
             serverFarmId: planOptional && planOptional.id,
             siteConfig: {
-                alwaysOn: false, // asdf
-                linuxFxVersion: this._websiteOS === "linux" ? runtimeStack : undefined // asdf
+                linuxFxVersion: runtimeStack
+                // The rest will be filled in during execute
             }
         };
     }
@@ -489,6 +500,9 @@ export class WebsiteStep extends WebsiteCreatorStepBase {
         if (!this._website.serverFarmId) {
             this._website.serverFarmId = this.getSelectedAppServicePlanOptional() && this.getSelectedAppServicePlanOptional().id;
         }
+
+        // Finish putting together the site configuration
+        this._website.siteConfig = await this.getSiteConfig(this._website.siteConfig.linuxFxVersion);
 
         this._website = await websiteClient.webApps.createOrUpdate(rg.name, this._website.name, this._website);
         this._website.siteConfig = await websiteClient.webApps.getConfiguration(rg.name, this._website.name);

@@ -29,8 +29,7 @@ export class FunctionAppCreator extends WebsiteCreator {
         this.steps.push(new WebsiteNameStep(this, this.azureAccount, { prompt: "Enter a globally unique name for the new Function App." }, this.persistence));
         this.steps.push(new ResourceGroupStep(this, this.azureAccount, this.persistence));
         this.steps.push(new StorageAccountStep(this, this.azureAccount, this.persistence));
-        // asdf this.steps.push(new AppServicePlanStep(this, this.azureAccount, this.appKind, this.websiteOS, this.persistence));
-        this.steps.push(new WebsiteStep(this, this.azureAccount, this.appKind, this.websiteOS,
+        this.steps.push(new FunctionAppWebsiteStep(this, this.azureAccount, this.appKind, this.websiteOS,
             {
                 title: "Create Function App",
                 creating: "Creating new Function App:",
@@ -59,6 +58,7 @@ export class StorageAccountStep extends WebsiteCreatorStepBase {
         name: string;
         sku: Sku;
         location: string;
+        resourceGroupName: string;
     };
 
     constructor(wizard: WizardBase, azureAccount: AzureAccountWrapper, persistence?: vscode.Memento) {
@@ -77,24 +77,21 @@ export class StorageAccountStep extends WebsiteCreatorStepBase {
         const storageClient = new StorageManagementClient(this.azureAccount.getCredentialByTenantId(subscription.tenantId), subscription.subscriptionId);
 
         var storageTask = storageClient.storageAccounts.list();
-        var s = await storageTask;
         var storageAccounts: StorageAccount[];
 
-        var locationsTask = this.azureAccount.getLocationsBySubscription(this.getSelectedSubscription());
-        var locations: SubscriptionModels.Location[];
-        var suggestedName = this.getsuggestedRelatedName();
+        // Storage accounts don't allow hyphens in their names
+        // asdf also they can't have uppercase.  This should be resolved at the beginning and checked for existence
+        var suggestedName = this.getsuggestedRelatedName().replace("-", "");
 
-        const quickPickItemsTask = Promise.all([storageTask, locationsTask]).then(results => {
+        const quickPickItemsTask = storageTask.then(storageAccounts => {
             const quickPickItems: QuickPickItemWithData<StorageAccount>[] = [createNewItem];
-            storageAccounts = <StorageAccount[]>results[0];
-            locations = results[1];
 
             // asdf must support blobs, queues, tables
             storageAccounts.forEach(sa => {
                 quickPickItems.push({
                     persistenceId: sa.id,
                     label: sa.name,
-                    description: `(${locations.find(l => l.name.toLowerCase() === sa.location.toLowerCase()).displayName})`,
+                    description: "", // asdf `(${locations.find(l => l.name.toLowerCase() === sa.location.toLowerCase()).displayName})`,
                     detail: '',
                     data: sa
                 });
@@ -104,11 +101,18 @@ export class StorageAccountStep extends WebsiteCreatorStepBase {
         });
 
         // Cache storage account separately per subscription
-        const result = await this.showQuickPick(quickPickItemsTask, quickPickOptions, `"NewWebApp.StorageAccount/${subscription.id}`);
+        const result = <QuickPickItemWithData<StorageAccount>>await this.showQuickPick(quickPickItemsTask, quickPickOptions, `"NewWebApp.StorageAccount/${subscription.id}`);
 
         if (result.data) {
             this._createNew = false;
-            this._account = result.data;
+
+            var [, resourceGroupName] = result.data.id.match(/\/resourceGroups\/([^/]+)\//);
+            this._account = {
+                name: result.data.name,
+                location: result.data.location,
+                sku: result.data.sku,
+                resourceGroupName: resourceGroupName
+            };
             return;
         }
 
@@ -143,7 +147,8 @@ export class StorageAccountStep extends WebsiteCreatorStepBase {
         this._account = {
             name: newAccountName.trim(),
             sku: { name: "Standard_LRS" },
-            location: this.getSelectedResourceGroup().location
+            location: this.getSelectedResourceGroup().location,
+            resourceGroupName: this.getSelectedResourceGroup().name
         }
     }
 
@@ -167,12 +172,65 @@ export class StorageAccountStep extends WebsiteCreatorStepBase {
         this.wizard.writeline(`Storage account created.`);
     }
 
-    get storageAccount(): StorageAccount {
+    public get storageAccount(): StorageAccount {
         return this._account;
     }
 
-    get createNew(): boolean {
+    public get createNew(): boolean {
         return this._createNew;
     }
 }
 
+// asdf verify creating new storage outside of RG that the website is in
+export class FunctionAppWebsiteStep extends WebsiteStep {
+    public async getSiteConfig(linuxFxVersion: string): Promise<WebSiteModels.SiteConfig> {
+        const maxFileShareNameLength = 63;
+        const subscription = this.getSelectedSubscription();
+        const storageClient = new StorageManagementClient(this.azureAccount.getCredentialByTenantId(subscription.tenantId), subscription.subscriptionId);
+
+        var storageAccountStep = this.wizard.findStepOfType(StorageAccountStep);
+        var accountName = storageAccountStep.storageAccount.name;
+
+        var keys = await storageClient.storageAccounts.listKeys(storageAccountStep.storageAccount.resourceGroupName, accountName);
+        var accountKey = keys.keys[0].value;
+        var siteName = this.website.name;
+
+        var fileShareName = siteName.toLocaleLowerCase() + "-content".slice(0, maxFileShareNameLength);
+        if (!storageAccountStep.createNew) {
+            var randomLetters = 4;
+            fileShareName = fileShareName.slice(0, maxFileShareNameLength - randomLetters - 1) + "-" + util.getRandomHexString(randomLetters);
+        }
+
+        return <WebSiteModels.SiteConfig>{
+            linuxFxVersion: linuxFxVersion,
+            appSettings: [
+                {
+                    name: "AzureWebJobsDashboard",
+                    value: 'DefaultEndpointsProtocol=https;AccountName=' + storageAccountStep.storageAccount.name + ';AccountKey=' + accountKey
+                },
+                {
+                    name: "AzureWebJobsStorage",
+                    value: 'DefaultEndpointsProtocol=https;AccountName=' + storageAccountStep.storageAccount.name + ';AccountKey=' + accountKey
+                },
+                {
+                    name: "FUNCTIONS_EXTENSION_VERSION",
+                    value: "~1"
+                },
+                {
+                    name: "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+                    value: 'DefaultEndpointsProtocol=https;AccountName=' + storageAccountStep.storageAccount.name + ';AccountKey=' + accountKey
+                },
+                {
+                    name: "WEBSITE_CONTENTSHARE",
+                    value: fileShareName
+                },
+                {
+                    name: "WEBSITE_NODE_DEFAULT_VERSION",
+                    value: "6.5.0"
+                }
+            ],
+            clientAffinityEnabled: false,
+            // asdf alwaysOn: false
+        }
+    };
+}

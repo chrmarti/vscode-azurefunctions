@@ -51,19 +51,7 @@ export abstract class WebsiteCreator extends WizardBase {
     protected abstract prepareSteps(): void;
 
     async run(promptOnly = false): Promise<WizardResult> {
-        // If not signed in, execute the sign in command and wait for it...
-        if (this.azureAccount.signInStatus !== 'LoggedIn') {
-            await vscode.commands.executeCommand(uiUtil.getSignInCommandString());
-        }
-        // Now check again, if still not signed in, cancel.
-        if (this.azureAccount.signInStatus !== 'LoggedIn') {
-            return {
-                status: 'Cancelled',
-                step: this.steps[0],
-                error: null
-            };
-        }
-
+        await uiUtil.requireSignIn();
         return super.run(promptOnly);
     }
 
@@ -327,7 +315,7 @@ export class AppServicePlanStep extends WebsiteCreatorStepBase {
                 value = value ? value.trim() : '';
 
                 if (plans.findIndex(plan => plan.resourceGroup.toLowerCase() === rg.name && value.localeCompare(plan.name) === 0) >= 0) {
-                    return `App Service name "${value}" already exists in resource group "${rg.name}".`; // asdf should be unique per subscription not RG
+                    return `App Service name "${value}" already exists in resource group "${rg.name}".`;
                 }
 
                 if (!value.match(/^[a-z0-9\-]{1,40}$/ig)) {

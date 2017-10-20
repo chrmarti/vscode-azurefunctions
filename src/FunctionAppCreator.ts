@@ -209,7 +209,7 @@ export class FunctionAppWebsiteStep extends WebsiteStep {
                 },
                 {
                     name: "FUNCTIONS_EXTENSION_VERSION",
-                    value: "~1"
+                    value: "~1" // This means use latest version with major version "1"
                 },
                 {
                     name: "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
@@ -224,8 +224,7 @@ export class FunctionAppWebsiteStep extends WebsiteStep {
                     value: "6.5.0"
                 }
             ],
-            clientAffinityEnabled: false,
-            // asdf alwaysOn: false
+        clientAffinityEnabled: false
         }
     };
 }

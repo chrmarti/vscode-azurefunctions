@@ -8,6 +8,7 @@ import { QuickPickItem } from 'vscode';
 import * as nls from 'vscode-nls';
 import * as errors from '../errors';
 import * as crypto from "crypto";
+import { UserCancelledError } from '../errors';
 
 // asdf
 export interface PartialList<T> extends Array<T> {
@@ -106,9 +107,19 @@ export class PickWithData<T> extends Pick {
 //     });
 // }
 
-// asdf
-export function getSignInCommandString(): string {
-    return 'azure-account.login';
+export async function signIn(): Promise<any> {
+    return vscode.commands.executeCommand('azure-account.login');
+}
+
+export async function requireSignIn(): Promise<any> {
+    // If not signed in, execute the sign in command and wait for it...
+    if (this.azureAccount.signInStatus !== 'LoggedIn') {
+        await signIn();
+    }
+    // Now check again, if still not signed in, cancel.
+    if (this.azureAccount.signInStatus !== 'LoggedIn') {
+        throw new UserCancelledError();
+    }
 }
 
 // asdf

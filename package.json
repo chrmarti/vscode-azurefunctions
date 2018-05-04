@@ -239,6 +239,11 @@
                 "command": "azureFunctions.deleteProxy",
                 "title": "%azFunc.deleteProxy%",
                 "category": "Azure Functions"
+            },
+            {
+                "command": "azureFunctions.work",
+                "title": "Work",
+                "category": "Azure Functions"
             }
         ],
         "viewsContainers": {
@@ -427,6 +432,21 @@
                     "command": "azureFunctions.deleteProxy",
                     "when": "view == azureFunctionsExplorer && viewItem == azFuncProxy",
                     "group": "1@1"
+                },
+                {
+                    "command": "azureFunctions.work",
+                    "when": "view == azure-account.resourceView && viewItem == resource:Microsoft.Web/sites:functionapp",
+                    "group": "navigation"
+                },
+                {
+                    "command": "azureFunctions.work",
+                    "when": "view == azure-account.resourceView && viewItem == azureFunctions.exampleNode",
+                    "group": "navigation"
+                },
+                {
+                    "command": "azureFunctions.deploy",
+                    "when": "view == azure-account.resourceView && viewItem == resource:Microsoft.Web/sites:functionapp",
+                    "group": "inline"
                 }
             ],
             "explorer/context": [
@@ -581,6 +601,14 @@
                         "default": true
                     }
                 }
+            }
+        ],
+        "azure-account.resourceTypes": [
+            {
+                "id": "Microsoft.Web/sites",
+                "kind": "functionapp",
+                "iconPath": "resources/azFuncFunctionApp.svg",
+                "provider": "azureFunctions.resourceType"
             }
         ]
     },

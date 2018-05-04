@@ -442,6 +442,11 @@
                     "command": "azureFunctions.work",
                     "when": "view == azure-account.resourceView && viewItem == azureFunctions.exampleNode",
                     "group": "navigation"
+                },
+                {
+                    "command": "azureFunctions.deploy",
+                    "when": "view == azure-account.resourceView && viewItem == resource:Microsoft.Web/sites:functionapp",
+                    "group": "inline"
                 }
             ],
             "explorer/context": [

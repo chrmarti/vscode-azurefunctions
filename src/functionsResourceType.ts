@@ -30,7 +30,7 @@ function work(provider: FunctionsTypeProvider, node: AzureResourceViewNode): voi
     setTimeout(() => {
         treeItem.label = oldLabel;
         provider.treeDataProvider.didChangeTreeData.fire(node);
-    }, /*    */3000);
+    }, /*    */2000);
 }
 
 class FunctionsTypeProvider implements AzureResourceTypeProvider<AzureResourceViewNode> {

@@ -582,6 +582,14 @@
                     }
                 }
             }
+        ],
+        "azure-account.resourceTypes": [
+            {
+                "id": "Microsoft.Web/sites",
+                "kind": "functionapp",
+                "iconPath": "resources/azFuncFunctionApp.svg",
+                "provider": "azureFunctions.resourceType"
+            }
         ]
     },
     "scripts": {

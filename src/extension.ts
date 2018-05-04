@@ -36,6 +36,7 @@ import { restartFunctionApp } from './commands/restartFunctionApp';
 import { startFunctionApp } from './commands/startFunctionApp';
 import { stopFunctionApp } from './commands/stopFunctionApp';
 import { ext } from './extensionVariables';
+import { functionsResourceType } from './functionsResourceType';
 import { getTemplateDataFromBackup, tryGetLatestTemplateData, tryGetTemplateDataFromCache } from './templates/TemplateData';
 import { FunctionAppProvider } from './tree/FunctionAppProvider';
 import { FunctionAppTreeItem } from './tree/FunctionAppTreeItem';
@@ -123,6 +124,8 @@ export function activate(context: vscode.ExtensionContext): void {
         actionHandler.registerCommand('azureFunctions.debugFunctionAppOnAzure', async (node?: IAzureNode<FunctionAppTreeItem>) => await remoteDebugFunctionApp(outputChannel, ui, tree, node));
         actionHandler.registerCommand('azureFunctions.deleteProxy', async (node?: IAzureNode) => await deleteNode(tree, ProxyTreeItem.contextValue, node));
     });
+
+    functionsResourceType(context);
 }
 
 async function getTemplateData(reporter: TelemetryReporter | undefined, context: vscode.ExtensionContext): Promise<void> {

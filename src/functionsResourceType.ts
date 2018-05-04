@@ -17,7 +17,20 @@ export function functionsResourceType(context: vscode.ExtensionContext): void {
         throw new Error(localize('NoAccountExtensionError', 'The Azure Account Extension is required for the App Service tools.'));
     }
     const azureAccount: AzureAccount = azureAccountExtension.exports;
-    context.subscriptions.push(azureAccount.registerResourceTypeProvider('azureFunctions.resourceType', new FunctionsTypeProvider()));
+    const provider: FunctionsTypeProvider = new FunctionsTypeProvider();
+    context.subscriptions.push(azureAccount.registerResourceTypeProvider('azureFunctions.resourceType', provider));
+    context.subscriptions.push(vscode.commands.registerCommand('azureFunctions.work', (node: AzureResourceViewNode) => work(provider, node)));
+}
+
+function work(provider: FunctionsTypeProvider, node: AzureResourceViewNode): void {
+    const treeItem: vscode.TreeItem = provider.treeDataProvider.getTreeItem(node);
+    const oldLabel: string = treeItem.label || '';
+    treeItem.label += ' (Working...)';
+    provider.treeDataProvider.didChangeTreeData.fire(node);
+    setTimeout(() => {
+        treeItem.label = oldLabel;
+        provider.treeDataProvider.didChangeTreeData.fire(node);
+    }, /*    */3000);
 }
 
 class FunctionsTypeProvider implements AzureResourceTypeProvider<AzureResourceViewNode> {
@@ -30,6 +43,10 @@ class FunctionsTypeProvider implements AzureResourceTypeProvider<AzureResourceVi
 }
 
 class FunctionsTreeDataProvider implements vscode.TreeDataProvider<AzureResourceViewNode> {
+
+    public didChangeTreeData: vscode.EventEmitter<AzureResourceViewNode | undefined | null> = new vscode.EventEmitter<AzureResourceViewNode | undefined | null>();
+    public onDidChangeTreeData: vscode.Event<AzureResourceViewNode | undefined | null> = this.didChangeTreeData.event;
+
     public getTreeItem(element: AzureResourceViewNode): vscode.TreeItem {
         if (element instanceof vscode.TreeItem) {
             return element;
@@ -50,6 +67,7 @@ class FunctionsTreeDataProvider implements vscode.TreeDataProvider<AzureResource
 
 class FunctionsNode extends vscode.TreeItem implements AzureResourceViewNode {
     public provider: string = 'azureFunctions.resourceType';
+    public contextValue: string = 'azureFunctions.exampleNode';
 
     constructor(label: string, iconPath: string, collapsibleState?: vscode.TreeItemCollapsibleState) {
         super(label, collapsibleState);

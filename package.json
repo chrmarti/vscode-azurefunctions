@@ -239,6 +239,11 @@
                 "command": "azureFunctions.deleteProxy",
                 "title": "%azFunc.deleteProxy%",
                 "category": "Azure Functions"
+            },
+            {
+                "command": "azureFunctions.work",
+                "title": "Work",
+                "category": "Azure Functions"
             }
         ],
         "viewsContainers": {
@@ -427,6 +432,16 @@
                     "command": "azureFunctions.deleteProxy",
                     "when": "view == azureFunctionsExplorer && viewItem == azFuncProxy",
                     "group": "1@1"
+                },
+                {
+                    "command": "azureFunctions.work",
+                    "when": "view == azure-account.resourceView && viewItem == resource:Microsoft.Web/sites:functionapp",
+                    "group": "navigation"
+                },
+                {
+                    "command": "azureFunctions.work",
+                    "when": "view == azure-account.resourceView && viewItem == azureFunctions.exampleNode",
+                    "group": "navigation"
                 }
             ],
             "explorer/context": [

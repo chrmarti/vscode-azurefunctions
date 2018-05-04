@@ -26,9 +26,12 @@ function work(provider: FunctionsTypeProvider, node: AzureResourceViewNode): voi
     const treeItem: vscode.TreeItem = provider.treeDataProvider.getTreeItem(node);
     const oldLabel: string = treeItem.label || '';
     treeItem.label += ' (Working...)';
+    const oldIconPath: string = <string>treeItem.iconPath;
+    treeItem.iconPath = path.join(__dirname, '../../resources/dark/Loading.svg');
     provider.treeDataProvider.didChangeTreeData.fire(node);
     setTimeout(() => {
         treeItem.label = oldLabel;
+        treeItem.iconPath = oldIconPath;
         provider.treeDataProvider.didChangeTreeData.fire(node);
     }, /*    */2000);
 }
